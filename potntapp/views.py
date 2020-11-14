@@ -59,7 +59,7 @@ def signup(request):
 
     except Exception as e:
         print(e)
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest(repr(e))
 
 
 @csrf_exempt
@@ -75,17 +75,16 @@ def login(request, tenant):
         return JsonResponse({"bearerToken": our_jwt.decode('utf-8')})
 
     except Exception as e:
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest(repr(e))
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-@authenticated
 def pothole(request, tenant):
     try:
         body_unicode = request.body.decode('utf-8')
         body = json.loads(body_unicode)
-        pothole = Pothole(uuid=uuid.uuid4(), depth=body['depth'], width=body['width'], length=body['length'], latitude=body['coordinate']['latitude'], longitude=body['coordinate']['latitude'], road=Road.objects.get(uuid=body["road"]["uuid"]), tenant=Tenant.objects.get(name=tenant))
+        pothole = Pothole(uuid=uuid.uuid4(), depth=body['depth'], width=body['width'], length=body['length'], latitude=body['coordinates']['latitude'], longitude=body['coordinates']['longitude'], road=Road.objects.get(uuid=body["road"]["uuid"]), tenant=Tenant.objects.get(name=tenant))
         pothole.save()
         return JsonResponse(model_to_dict(pothole), safe=False)
         
@@ -124,19 +123,25 @@ def roadPotholes(request, tenant, uuidRoad):
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
-@authenticated
 def roads(request, tenant):
     try:
         if request.method == 'GET':
             raw_data = serializers.serialize('python', Road.objects.all().filter(tenant=tenant))
-            actual_data = [d['fields'] for d in raw_data]
+            actual_data = [{
+                "uuid": d['pk'],
+                "name": d['fields']["name"]
+             } for d in raw_data]
             return JsonResponse(actual_data, safe=False)
 
         if request.method == 'POST':
-            body = json.loads(request.body.decode('utf-8'))
-            road = Road(uuid=uuid.uuid4(), name=body['name'], tenant=Tenant.objects.get(name=tenant))
-            road.save()
-            return JsonResponse(model_to_dict(road), safe=False)
+            @authenticated
+            def handler(request, tenant):
+                body = json.loads(request.body.decode('utf-8'))
+                road = Road(uuid=uuid.uuid4(), name=body['name'], tenant=Tenant.objects.get(name=tenant))
+                road.save()
+                return JsonResponse(model_to_dict(road), safe=False)
+            
+            return handler(request, tenant)
     except Exception as e:
         print(e)
         return HttpResponseBadRequest()
@@ -183,7 +188,6 @@ def potholeWithUuid(request, tenant, uuidPothole):
     
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
-@authenticated
 def potholeImage(request, tenant, uuidPothole):
     try:
         if request.method == 'POST':
@@ -195,9 +199,13 @@ def potholeImage(request, tenant, uuidPothole):
                         destination.write(chunk)
                 return HttpResponse("ok")
         else:
-            p = Pothole.objects.get(uuid=uuidPothole, tenant=Tenant.objects.get(name=tenant))
-            img = open(f'{image_path}/{p.uuid}', 'rb')
-            return FileResponse(img)
+            @authenticated
+            def handler(request, tenant, uuidPothole):
+                p = Pothole.objects.get(uuid=uuidPothole, tenant=Tenant.objects.get(name=tenant))
+                img = open(f'{image_path}/{p.uuid}', 'rb')
+                return FileResponse(img)
+            
+            return handler(request, tenant, uuidPothole)
         return HttpResponseBadRequest()
     except Exception as e:
         print(e)
