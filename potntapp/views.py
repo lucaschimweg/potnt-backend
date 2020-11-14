@@ -155,7 +155,7 @@ def potholeWithUuid(request, tenant, uuidPothole):
         if request.method == 'PUT':
             body_unicode = request.body.decode('utf-8')
             body = json.loads(body_unicode)
-            Pothole.objects.filter(tenant=Tenant.objects.get(name=tenant), uuid=uuidPothole).update(depth=body['depth'], width=body['width'], length=body['length'], latitude=body['coordinate']['latitude'], longitude=body['coordinate']['latitude'])
+            Pothole.objects.filter(tenant=Tenant.objects.get(name=tenant), uuid=uuidPothole).update(depth=body['depth'], width=body['width'], length=body['length'])
             return HttpResponse("OK")
         if request.method == 'DELETE':
             o = Pothole.objects.get(tenant=Tenant.objects.get(name=tenant), uuid=uuidPothole)
@@ -199,13 +199,10 @@ def potholeImage(request, tenant, uuidPothole):
                         destination.write(chunk)
                 return HttpResponse("ok")
         else:
-            @authenticated
-            def handler(request, tenant, uuidPothole):
-                p = Pothole.objects.get(uuid=uuidPothole, tenant=Tenant.objects.get(name=tenant))
-                img = open(f'{image_path}/{p.uuid}', 'rb')
-                return FileResponse(img)
+            p = Pothole.objects.get(uuid=uuidPothole, tenant=Tenant.objects.get(name=tenant))
+            img = open(f'{image_path}/{p.uuid}', 'rb')
+            return FileResponse(img)
             
-            return handler(request, tenant, uuidPothole)
         return HttpResponseBadRequest()
     except Exception as e:
         print(e)
