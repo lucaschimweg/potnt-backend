@@ -25,7 +25,7 @@ spec:
         persistentVolumeClaim:
           claimName: potnt-pvc
       containers:
-      - image: lucaschimweg/potnt-backend:{{ .Values.imageVersion }}
+      - image: ghcr.io/lucaschimweg/potnt-backend:{{ .Values.imageVersion }}
         imagePullPolicy: Always
         name: potnt-backend
         env:
