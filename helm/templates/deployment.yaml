@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: potnt
+  name: potnt-backend
+  labels:
+    app: potnt-backend
+    tier: backend
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: potnt-backend
+      tier: backend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: potnt-backend
+        tier: backend
+    spec:
+      volumes:
+      - name: volume
+        persistentVolumeClaim:
+          claimName: potnt-pvc
+      containers:
+      - image: lucaschimweg/potnt-backend:{{ .Values.imageVersion }}
+        imagePullPolicy: Always
+        name: potnt-backend
+        env:
+        - name: JWT_SECRET
+          value: {{ .Values.jwtSecret }}
+        - name: DB_HOST
+          value: postgres-postgresql
+        - name: DB_NAME
+          value: postgres
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: {{ .Values.dbPassword }}
+        - name: DB_PORT
+          value: "5432"
+        - name: IMAGE_PATH
+          value: /images
+        ports:
+        - containerPort: 8000
+          name: http-port
+        volumeMounts:
+        - mountPath: "/images"
+          name: volume
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: potnt-pv
+  namespace: potnt
+spec:
+  capacity:
+    storage: 4Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: my-local-storage
+  local:
+    path: /kube/potnt
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - s01.nodes.eu01.kuly.cloud
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: potnt-pvc
+  namespace: potnt
+spec:
+  resources:
+    requests:
+      storage: 4Gi
+  accessModes:
+  - ReadWriteMany
+  storageClassName: "my-local-storage"
+  volumeName: potnt-pv

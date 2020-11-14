@@ -26,7 +26,9 @@ SECRET_KEY = 'ef)gxj0gxwfcqmf^yo-jc#ec%&45mksup@5b13%5z#f4!42gl+'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "potnt.kuly.cloud"
+]
 
 
 # Application definition
@@ -79,6 +81,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': os.getenv("DB_NAME"),
+        'USER': os.getenv("DB_USER"),
         'PASSWORD': os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": os.getenv("DB_PORT")

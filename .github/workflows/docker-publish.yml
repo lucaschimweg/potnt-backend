@@ -1,0 +1,48 @@
+name: Docker
+
+on:
+  push:
+    # Publish `main` as Docker `latest` image.
+    branches:
+      - release
+
+env:
+  # TODO: Change variable to your image's name.
+  IMAGE_NAME: potnt-backend
+
+jobs:
+  push:
+    # Ensure test job passes before pushing image.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        run: docker build . --file Dockerfile --tag $IMAGE_NAME
+
+      - name: Log into registry
+        run: echo ${{ secrets.CR_PAT }} | docker login ghcr.io  -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        run: |
+          IMAGE_ID=ghcr.io/lucaschimweg/$IMAGE_NAME
+          VERSION=$(git rev-parse --short HEAD)
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker tag $IMAGE_NAME $IMAGE_ID:latest
+
+          docker push $IMAGE_ID:$VERSION
+  deploy:
+    needs: [push]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy
+        uses: WyriHaximus/github-action-helm3@v2
+        with:
+          exec: helm upgrade potnt-backend ./helm/ --install --wait --atomic --set=imageVersion=$(git rev-parse --short HEAD) --set=jwtSecret=${{ secrets.JWT_SECRET}} --set=dbPassword=${{ secrets.DB_PASSWORD}}
+          kubeconfig: '${{ secrets.KUBECONFIG }}'
