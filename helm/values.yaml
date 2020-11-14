@@ -1,0 +1,4 @@
+replicas: 1
+imageVersion: latest
+dbPassword: 
+jwtSecret: 
